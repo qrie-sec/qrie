@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# CDK
+cdk.out/
+.cdk.staging/
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+
+# Temp
+*.log
+response.json
