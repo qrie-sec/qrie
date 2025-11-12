@@ -1,0 +1,60 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      aws-cli:
+        specifier: ^0.0.2
+        version: 0.0.2
+
+packages:
+
+  aws-cli@0.0.2:
+    resolution: {integrity: sha512-340A6bn3I5p/yc8MGQiWRofW3oUpmZ/k6LIZticzDOKWT4/F+TP54hki9SWmSS6XnvNIVAw4k9oPocq6ya4L1g==}
+    deprecated: Recommend using the official aws cli tools for python
+    hasBin: true
+
+  aws-sdk@2.0.31:
+    resolution: {integrity: sha512-rgmExM3/LjhI95PfjwDs1hks/RYrQ/V3qLybFCzBqr8Y3Hz9Qq3jp+WR1BaWhUckgoVJs/ZE4VSvMKZeNwuFoA==}
+    engines: {node: '>= 0.8.0'}
+
+  operetta@0.0.5:
+    resolution: {integrity: sha512-b9E0Z5nvkHf9IQ0q7VaWpDfj/nX/pRAcMBoGh4SLrGhC2gE3BD6GwLc2qp64AsZgEwBe2gqIgBc5fqu/WDL9uQ==}
+    engines: {'0': node >= 0.4.6}
+
+  sax@0.4.2:
+    resolution: {integrity: sha512-6Zsl4gnHjiTQfrOzsWdc0bHJepF5KJAVuM5fcyEJrqGyszkx2c55IclWP4D692rJrl1w0tExhbvYKjKNZl5wHg==}
+
+  xml2js@0.2.6:
+    resolution: {integrity: sha512-h+Nzgo0eLwideldZGqSquNtrsuX5zcDREImBa1GSNw9QljlXiFcM3E1kWjLprRjJe2jRuvnVk0j3WgQo9Deoog==}
+
+  xmlbuilder@0.4.2:
+    resolution: {integrity: sha512-h/+ncQQSU/iYycmI2wTN25t7RYN7O2oq9uvI+2+UObi4KcmQh/jUS4N31g5vJttQt7MODsnmBtbcll3YbNyvfw==}
+    engines: {node: '>=0.2.0'}
+
+snapshots:
+
+  aws-cli@0.0.2:
+    dependencies:
+      aws-sdk: 2.0.31
+      operetta: 0.0.5
+
+  aws-sdk@2.0.31:
+    dependencies:
+      xml2js: 0.2.6
+      xmlbuilder: 0.4.2
+
+  operetta@0.0.5: {}
+
+  sax@0.4.2: {}
+
+  xml2js@0.2.6:
+    dependencies:
+      sax: 0.4.2
+
+  xmlbuilder@0.4.2: {}
