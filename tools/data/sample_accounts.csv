@@ -1,0 +1,4 @@
+AccountId,AccountName,Environment,Status
+123456789012,production-main,production,active
+987654321098,development-sandbox,development,active
+555666777888,staging-test,staging,active
