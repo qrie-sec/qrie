@@ -11,7 +11,7 @@ from common.exceptions import ApiException
 # Import handlers from individual API modules
 from api.resources_api import (
     handle_list_resources_paginated,
-    handle_list_accounts as resources_handle_list_accounts,
+    handle_list_accounts,
     handle_list_services,
     handle_get_resources_summary,
 )
@@ -55,7 +55,7 @@ def lambda_handler(event, context):
             return handle_list_resources_paginated(query_params, headers)
 
         if path == "/accounts" and method == "GET":
-            return resources_handle_list_accounts(headers)
+            return handle_list_accounts(headers)
 
         if path == "/services" and method == "GET":
             return handle_list_services(query_params, headers)

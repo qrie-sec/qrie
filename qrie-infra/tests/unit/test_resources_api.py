@@ -7,9 +7,11 @@ import sys
 import os
 from moto import mock_aws
 import boto3
+from common.exceptions import ValidationError
 
 # Add lambda directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'lambda'))
+headers = {'Content-Type': 'application/json'}
 
 # Mock environment variables before importing
 with patch.dict(os.environ, {
@@ -19,7 +21,6 @@ with patch.dict(os.environ, {
     'AWS_DEFAULT_REGION': 'us-east-1'
 }):
     from api.resources_api import handle_list_resources_paginated, handle_list_accounts, handle_list_services
-
 
 @mock_aws
 class TestResourcesAPI:
@@ -66,7 +67,6 @@ class TestResourcesAPI:
             'count': 1
         }
         
-        headers = {'Content-Type': 'application/json'}
         response = handle_list_resources_paginated({}, headers)
         
         assert response['statusCode'] == 200
@@ -86,14 +86,7 @@ class TestResourcesAPI:
             'next_token': 'abc123'
         }
         
-        query_params = {
-            'account': '123456789012',
-            'type': 's3',
-            'page_size': '25'
-        }
-        headers = {'Content-Type': 'application/json'}
-        
-        response = handle_list_resources_paginated(query_params, headers)
+        response = handle_list_resources_paginated({'account': '123456789012', 'type': 's3', 'page_size': '25'}, headers)
         
         assert response['statusCode'] == 200
         body = json.loads(response['body'])
@@ -116,8 +109,6 @@ class TestResourcesAPI:
             {'AccountId': '123456789013', 'ou': 'Finance'}
         ]
         
-        headers = {'Content-Type': 'application/json'}
-        
         response = handle_list_accounts(headers)
         
         assert response['statusCode'] == 200
@@ -129,10 +120,7 @@ class TestResourcesAPI:
     @patch('api.resources_api.SUPPORTED_SERVICES', ['s3', 'ec2', 'iam'])
     def test_list_services(self):
         """Test GET /services"""
-        query_params = {'supported': 'true'}
-        headers = {'Content-Type': 'application/json'}
-        
-        response = handle_list_services(query_params, headers)
+        response = handle_list_services({'supported': 'true'}, headers)
         
         assert response['statusCode'] == 200
         body = json.loads(response['body'])
@@ -159,20 +147,7 @@ class TestResourcesAPI:
         """Test page size is capped at 100"""
         mock_manager = Mock()
         mock_get_inventory_manager.return_value = mock_manager
-        mock_manager.get_resources_paginated.return_value = {
-            'resources': [],
-            'count': 0
-        }
+        with pytest.raises(ValidationError, match='page_size cannot be greater than 100'):
+            handle_list_resources_paginated({'page_size': '150'}, headers)
         
-        query_params = {'page_size': '150'}
-        headers = {'Content-Type': 'application/json'}
-        
-        response = handle_list_resources_paginated(query_params, headers)
-        
-        # Should cap at 100
-        mock_manager.get_resources_paginated.assert_called_once_with(
-            account_id=None,
-            service=None,
-            page_size=100,
-            next_token=None
-        )
+        mock_manager.get_resources_paginated.assert_not_called()

@@ -65,7 +65,7 @@ class TestAPIHandler:
         assert response['statusCode'] == 200
         mock_handle_list_resources_paginated.assert_called_once()
     
-    @patch('api.api_handler.resources_handle_list_accounts')
+    @patch('api.api_handler.handle_list_accounts')
     def test_accounts_endpoint(self, mock_handle_accounts):
         """Test /accounts endpoint routing"""
         mock_handle_accounts.return_value = {

@@ -33,21 +33,17 @@ def handle_list_findings_paginated(query_params, headers):
     
     # Validate page size
     if page_size > 100:
-        page_size = 100
+        raise ValidationError('page_size cannot be greater than 100')
     
     # Validate state filter
-    state_filter = None
-    if state:
-        if state in ['ACTIVE', 'RESOLVED']:
-            state_filter = state
-        else:
-            raise ValidationError('state must be ACTIVE or RESOLVED')
+    if state and state not in ['ACTIVE', 'RESOLVED']:
+        raise ValidationError('state must be ACTIVE or RESOLVED')
     
     # Get paginated findings based on filters
     result = get_findings_manager().get_findings_paginated(
         account_id=account,
         policy_id=policy,
-        state_filter=state_filter,
+        state_filter=state,
         severity_filter=severity,
         page_size=page_size,
         next_token=next_token

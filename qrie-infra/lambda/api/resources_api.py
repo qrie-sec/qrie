@@ -7,6 +7,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data_access.inventory_manager import InventoryManager
 from common_utils import get_customer_accounts, SUPPORTED_SERVICES
+from common.exceptions import ValidationError
 
 # Initialize manager lazily to avoid import-time dependencies
 inventory_manager = None
@@ -35,7 +36,7 @@ def handle_list_resources_paginated(query_params, headers):
     
     # Validate page size
     if page_size > 100:
-        page_size = 100
+        raise ValidationError('page_size cannot be greater than 100')
     
     # Use inventory_manager for paginated query
     result = get_inventory_manager().get_resources_paginated(

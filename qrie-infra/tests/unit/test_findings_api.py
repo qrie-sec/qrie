@@ -7,10 +7,11 @@ import sys
 import os
 from moto import mock_aws
 import boto3
+from common.exceptions import ValidationError
 
 # Add lambda directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'lambda'))
-
+headers = {'Content-Type': 'application/json'}
 # Mock environment variables before importing
 with patch.dict(os.environ, {
     'RESOURCES_TABLE': 'test-resources-table',
@@ -22,7 +23,7 @@ with patch.dict(os.environ, {
     from api.resources_api import handle_list_accounts
     from api.policies_api import handle_get_policies
     from data_access.findings_manager import Finding
-    from common.exceptions import ValidationError
+    
 
 
 @mock_aws
@@ -124,11 +125,9 @@ class TestFindingsAPI:
     
     def test_invalid_state_filter(self):
         """Test invalid state filter raises ValidationError"""
-        query_params = {'state': 'invalid'}
-        headers = {'Content-Type': 'application/json'}
         
         with pytest.raises(ValidationError, match='state must be ACTIVE or RESOLVED'):
-            handle_list_findings_paginated(query_params, headers)
+            handle_list_findings_paginated({'state': 'invalid'}, headers)
     
     @patch('api.resources_api.get_customer_accounts')
     def test_list_accounts(self, mock_get_accounts):
@@ -185,10 +184,7 @@ class TestFindingsAPI:
         
         mock_policy_manager.list_launched_policies.return_value = [mock_policy]
         
-        query_params = {'status': 'active'}
-        headers = {'Content-Type': 'application/json'}
-        
-        response = handle_get_policies(query_params, headers)
+        response = handle_get_policies({'status': 'active'}, headers)
         
         assert response['statusCode'] == 200
         body = json.loads(response['body'])
@@ -244,10 +240,7 @@ class TestFindingsAPI:
         mock_policy_manager.list_launched_policies.return_value = [active_policy]
         mock_policy_manager.get_available_policies.return_value = [available_policy]
         
-        query_params = {'status': 'all'}
-        headers = {'Content-Type': 'application/json'}
-        
-        response = handle_get_policies(query_params, headers)
+        response = handle_get_policies({'status': 'all'}, headers)
         
         assert response['statusCode'] == 200
         body = json.loads(response['body'])
@@ -273,25 +266,11 @@ class TestFindingsAPI:
         """Test page size is capped at 100"""
         mock_manager = Mock()
         mock_get_findings_manager.return_value = mock_manager
-        mock_manager.get_findings_paginated.return_value = {
-            'findings': [],
-            'count': 0
-        }
         
-        query_params = {'page_size': '150'}
-        headers = {'Content-Type': 'application/json'}
+        with pytest.raises(ValidationError, match='page_size cannot be greater than 100'):
+            handle_list_findings_paginated({'page_size': '150'}, headers)
         
-        response = handle_list_findings_paginated(query_params, headers)
-        
-        # Should cap at 100
-        mock_manager.get_findings_paginated.assert_called_once_with(
-            account_id=None,
-            policy_id=None,
-            state_filter=None,
-            severity_filter=None,
-            page_size=100,
-            next_token=None
-        )
+        mock_manager.get_findings_paginated.assert_not_called()
     
     @patch('api.findings_api.get_findings_manager')
     def test_state_parameter_passthrough(self, mock_get_findings_manager):
@@ -304,10 +283,7 @@ class TestFindingsAPI:
         }
         
         # Test 'ACTIVE' -> 'ACTIVE'
-        query_params = {'state': 'ACTIVE'}
-        headers = {'Content-Type': 'application/json'}
-        
-        handle_list_findings_paginated(query_params, headers)
+        handle_list_findings_paginated({'state': 'ACTIVE'}, headers)
         
         mock_manager.get_findings_paginated.assert_called_with(
             account_id=None,
@@ -320,9 +296,8 @@ class TestFindingsAPI:
         
         # Test 'RESOLVED' -> 'RESOLVED'
         mock_manager.reset_mock()
-        query_params = {'state': 'RESOLVED'}
         
-        handle_list_findings_paginated(query_params, headers)
+        handle_list_findings_paginated({'state': 'RESOLVED'}, headers)
         
         mock_manager.get_findings_paginated.assert_called_with(
             account_id=None,
