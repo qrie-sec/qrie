@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Forward selected EC2/S3/IAM CloudTrail mutations to qrie's QOP SQS (cross-account, same Region)
+# SOURCE OF TRUTH: Original file is in qrie-infra/onboarding/customer_bootstrap.yaml
+# This file is copied to qrie-lp/public/onboarding/ for customer downloads.
+# Always edit original file and run: cp qrie-infra/onboarding/customer_bootstrap.yaml qrie-lp/public/onboarding/
+
+Parameters:
+  QopQueueArn:
+    Type: String
+    Description: ARN of the QOP SQS queue in THIS Region (same Region as stack)
+  QopAccountId:
+    Type: String
+    Description: AWS Account ID of the QOP (qrie on-prem) account
+  CustomerName:
+    Type: String
+    Description: Customer organization name for tagging
+
+Resources:
+  EventsToSqsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "QrieEventsToSqs-${AWS::AccountId}-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowSendMessageToQrieQueue
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !Ref QopQueueArn
+      Tags:
+        - Key: "qrie:managed"
+          Value: "true"
+        - Key: "qrie:component"
+          Value: "event-forwarding"
+        - Key: "qrie:purpose"
+          Value: "EventBridge role for forwarding CloudTrail events to QOP"
+
+  QrieForwardRuleEC2:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "qrie-forward-ec2-${AWS::Region}"
+      Description: "Forward selected EC2 CloudTrail mutations"
+      EventPattern:
+        source: [ "aws.ec2" ]
+        detail-type: [ "AWS API Call via CloudTrail" ]
+        detail:
+          readOnly: [ false ]
+          eventSource: [ "ec2.amazonaws.com" ]
+          eventName: [
+            "AuthorizeSecurityGroupIngress","RevokeSecurityGroupIngress","AuthorizeSecurityGroupEgress","RevokeSecurityGroupEgress",
+            "CreateSecurityGroup","DeleteSecurityGroup","ModifyNetworkInterfaceAttribute",
+            "CreateRoute","ReplaceRoute","DeleteRoute","AssociateRouteTable","DisassociateRouteTable",
+            "CreateInternetGateway","AttachInternetGateway","DetachInternetGateway","DeleteInternetGateway",
+            "CreateVpcEndpoint","DeleteVpcEndpoint","ModifyVpcEndpoint","AssociateAddress","DisassociateAddress"
+          ]
+      State: ENABLED
+      Targets:
+        - Id: QrieQopQueue
+          Arn: !Ref QopQueueArn
+          RoleArn: !GetAtt EventsToSqsRole.Arn
+      Tags:
+        - Key: "qrie:managed"
+          Value: "true"
+        - Key: "qrie:component"
+          Value: "event-forwarding"
+        - Key: "qrie:purpose"
+          Value: "Forward EC2 CloudTrail mutations to QOP"
+
+  QrieForwardRuleS3:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "qrie-forward-s3-${AWS::Region}"
+      Description: "Forward selected S3 CloudTrail mutations"
+      EventPattern:
+        source: [ "aws.s3" ]
+        detail-type: [ "AWS API Call via CloudTrail" ]
+        detail:
+          readOnly: [ false ]
+          eventSource: [ "s3.amazonaws.com" ]
+          eventName: [
+            "PutBucketPolicy","DeleteBucketPolicy","PutBucketAcl","PutBucketPublicAccessBlock","DeletePublicAccessBlock",
+            "PutBucketOwnershipControls","PutBucketEncryption","PutBucketVersioning","PutBucketReplication",
+            "CreateBucket","DeleteBucket","PutBucketLogging","PutBucketCors","PutBucketLifecycleConfiguration"
+          ]
+      State: ENABLED
+      Targets:
+        - Id: QrieQopQueue
+          Arn: !Ref QopQueueArn
+          RoleArn: !GetAtt EventsToSqsRole.Arn
+      Tags:
+        - Key: "qrie:managed"
+          Value: "true"
+        - Key: "qrie:component"
+          Value: "event-forwarding"
+        - Key: "qrie:purpose"
+          Value: "Forward S3 CloudTrail mutations to QOP"
+
+  QrieForwardRuleIAM:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "qrie-forward-iam-${AWS::Region}"
+      Description: "Forward selected IAM CloudTrail mutations"
+      EventPattern:
+        source: [ "aws.iam" ]
+        detail-type: [ "AWS API Call via CloudTrail" ]
+        detail:
+          readOnly: [ false ]
+          eventSource: [ "iam.amazonaws.com" ]
+          eventName: [
+            "CreateUser","DeleteUser","CreateLoginProfile","UpdateLoginProfile","CreateAccessKey","UpdateAccessKey","DeleteAccessKey",
+            "CreateRole","DeleteRole","UpdateAssumeRolePolicy","UpdateRole","UpdateRoleDescription",
+            "AttachRolePolicy","DetachRolePolicy","PutRolePolicy","DeleteRolePolicy",
+            "AttachUserPolicy","DetachUserPolicy","PutUserPolicy","DeleteUserPolicy",
+            "CreatePolicy","CreatePolicyVersion","SetDefaultPolicyVersion","DeletePolicyVersion"
+          ]
+      State: ENABLED
+      Targets:
+        - Id: QrieQopQueue
+          Arn: !Ref QopQueueArn
+          RoleArn: !GetAtt EventsToSqsRole.Arn
+      Tags:
+        - Key: "qrie:managed"
+          Value: "true"
+        - Key: "qrie:component"
+          Value: "event-forwarding"
+        - Key: "qrie:purpose"
+          Value: "Forward IAM CloudTrail mutations to QOP"
+
+  QrieReadOnlyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "QrieReadOnly-${AWS::AccountId}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${QopAccountId}:root"
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Sub "qrie-${QopAccountId}-2024"
+              StringLike:
+                "aws:PrincipalArn": !Sub "arn:aws:iam::${QopAccountId}:role/Qrie*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/SecurityAudit
+      Tags:
+        - Key: "qrie:managed"
+          Value: "true"
+        - Key: "qrie:component"
+          Value: "cross-account-access"
+        - Key: "qrie:purpose"
+          Value: "Allow QOP read-only access for policy evaluation"
+
+Outputs:
+  EventsToSqsRoleArn:
+    Description: IAM role used by EventBridge to send to QOP SQS
+    Value: !GetAtt EventsToSqsRole.Arn
+  Ec2RuleArn:
+    Description: Use in QOP SQS resource policy (aws:SourceArn)
+    Value: !GetAtt QrieForwardRuleEC2.Arn
+  S3RuleArn:
+    Description: Use in QOP SQS resource policy (aws:SourceArn)
+    Value: !GetAtt QrieForwardRuleS3.Arn
+  IamRuleArn:
+    Description: Use in QOP SQS resource policy (aws:SourceArn)
+    Value: !GetAtt QrieForwardRuleIAM.Arn
+  QrieReadOnlyRoleArn:
+    Description: ARN of the cross-account role for QOP policy evaluation
+    Value: !GetAtt QrieReadOnlyRole.Arn

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "dependencies": {
+    "aws-cli": "^0.0.2"
+  }
+}
